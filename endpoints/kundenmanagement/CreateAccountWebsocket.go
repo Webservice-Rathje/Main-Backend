@@ -35,10 +35,10 @@ func CreateAccountWebsocket() fiber.Handler {
 		for {
 			if mt, msg, err = c.ReadMessage(); err != nil {
 				res, _ := json.Marshal(generalModels.ErrorResponseModel{
-					err.Error(),
-					"Server software",
-					"Contact the Webservice Rathje development team",
-					"alert alert-danger",
+					Error:          err.Error(),
+					CausedBy:       "Server software",
+					CouldBeFixedBy: "Contact the Webservice Rathje development team",
+					Alert:          "alert alert-danger",
 				})
 				c.WriteMessage(mt, res)
 				break
@@ -53,11 +53,23 @@ func CreateAccountWebsocket() fiber.Handler {
 					Alert:          "alert alert-danger",
 				})
 				c.WriteMessage(mt, resp)
+				break
+			}
+			if !checkRequestData(data) {
+				resp, _ := json.Marshal(generalModels.ErrorResponseModel{
+					Error:          err.Error(),
+					CausedBy:       "Your invalid JSON string",
+					CouldBeFixedBy: "Fixing problems with your JSON string",
+					Alert:          "alert alert-danger",
+				})
+				c.WriteMessage(mt, resp)
+				break
 			}
 			type response_struct struct {
 				Message string `json:"message"`
 				Alert   string `json:"alert"`
 			}
+
 			if data.TwoFA_Code == "null" {
 				kID := utils.Generate_KundenID()
 				hash := utils.HashPassword(data.UserData.Password, utils.GenerateSalt())
@@ -99,6 +111,7 @@ func CreateAccountWebsocket() fiber.Handler {
 					KundenID string `json:"KundenID"`
 				}
 				var kid_struct cacheStruct
+				code_exists := false
 				for resp.Next() {
 					err := resp.Scan(&kid_struct.KundenID)
 					if err != nil {
@@ -111,18 +124,40 @@ func CreateAccountWebsocket() fiber.Handler {
 						c.WriteMessage(mt, res)
 						break
 					}
+					code_exists = true
 				}
-				stmt, _ = conn.Prepare("UPDATE `kunden` SET `Mailverified`=1 WHERE `KundenID`=? AND `Password`=?")
-				stmt.Exec(kid_struct.KundenID, utils.CheckPasswordsMatch(data.UserData.Password, conn, kid_struct.KundenID))
-				stmt, _ = conn.Prepare("DELETE FROM `2FA-Codes` WHERE `Code`=?;")
-				stmt.Exec(data.TwoFA_Code)
-				res, _ := json.Marshal(response_struct{
-					"Registrierung erfolgreich abgeschlossen. Sie können nun fortfahren.",
-					"alert alert-success",
-				})
-				c.WriteMessage(mt, res)
-				break
+				if !code_exists {
+					res, _ := json.Marshal(generalModels.ErrorResponseModel{
+						"Ihr 2FA-Code ist falsch. Bitte überprüfen sie, ob sie den richtigen Code eingegeben haben.",
+						"wrong code",
+						"check your code",
+						"alert alert-waring",
+					})
+					c.WriteMessage(mt, res)
+				} else {
+					stmt, _ = conn.Prepare("UPDATE `kunden` SET `Mailverified`=1 WHERE `KundenID`=? AND `Password`=?")
+					stmt.Exec(kid_struct.KundenID, utils.CheckPasswordsMatch(data.UserData.Password, conn, kid_struct.KundenID))
+					stmt, _ = conn.Prepare("DELETE FROM `2FA-Codes` WHERE `Code`=?;")
+					stmt.Exec(data.TwoFA_Code)
+					res, _ := json.Marshal(response_struct{
+						"Registrierung erfolgreich abgeschlossen. Sie können nun fortfahren.",
+						"alert alert-success",
+					})
+					c.WriteMessage(mt, res)
+					break
+				}
 			}
 		}
 	})
+}
+
+func checkRequestData(data CreateAccountRequestModel) bool {
+	if data.TwoFA_Code != "" && data.UserData.Nachname != "" && data.UserData.Vorname != "" &&
+		data.UserData.Password != "" && data.UserData.Telefonnummer != "" && data.UserData.Mail != "" &&
+		data.UserData.Geschlecht != "" && data.UserData.Geburtsdatum != "" && data.UserData.Wohnort != "" &&
+		data.UserData.Postleitzahl != "" && data.UserData.Strasse != "" && data.UserData.Hausnummer != "" {
+		return true
+	} else {
+		return false
+	}
 }
