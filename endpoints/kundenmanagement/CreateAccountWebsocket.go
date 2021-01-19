@@ -6,6 +6,7 @@ import (
 	"github.com/Webservice-Rathje/Main-Backend/utils"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
+	"net/http"
 )
 
 type CreateAccountRequestModel struct {
@@ -91,7 +92,18 @@ func CreateAccountWebsocket() fiber.Handler {
 				two_fa_code := utils.Generate_2FA_Code()
 				stmt, _ = conn.Prepare("INSERT INTO `2FA-Codes` (`ID`, `Code`, `KundenID`, `timestamp`) VALUES (NULL, ?, ?, CURRENT_TIMESTAMP());")
 				stmt.Exec(two_fa_code, kID)
-				// Sending Mail via registration service
+				url := "http://10.11.0.5:8081/sendRegistrationCodeMail?mail=" + data.UserData.Mail + "&name=" + data.UserData.Vorname + "%20" + data.UserData.Nachname + "&2FA-Code=" + two_fa_code
+				_, err := http.Get(url)
+				if err != nil {
+					res, _ := json.Marshal(generalModels.ErrorResponseModel{
+						err.Error(),
+						"Unknown",
+						"Unknown",
+						"alert alert-danger",
+					})
+					c.WriteMessage(mt, res)
+					break
+				}
 				res, _ := json.Marshal(response_struct{
 					"Account wurde erfolgreich erstellt. Geben sie nun ihren 2FA-Code ein, den wir ihnen per Mail geschickt haben.",
 					"alert alert-success",
