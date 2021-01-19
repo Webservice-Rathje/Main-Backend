@@ -41,7 +41,6 @@ func CreateAccountWebsocket() fiber.Handler {
 					Alert:          "alert alert-danger",
 				})
 				c.WriteMessage(mt, res)
-				break
 			}
 			var data CreateAccountRequestModel
 			err = json.Unmarshal(msg, &data)
@@ -53,17 +52,15 @@ func CreateAccountWebsocket() fiber.Handler {
 					Alert:          "alert alert-danger",
 				})
 				c.WriteMessage(mt, resp)
-				break
 			}
 			if !checkRequestData(data) {
 				resp, _ := json.Marshal(generalModels.ErrorResponseModel{
-					Error:          err.Error(),
+					Error:          "Invalid request data",
 					CausedBy:       "Your invalid JSON string",
 					CouldBeFixedBy: "Fixing problems with your JSON string",
 					Alert:          "alert alert-danger",
 				})
 				c.WriteMessage(mt, resp)
-				break
 			}
 			type response_struct struct {
 				Message string `json:"message"`
@@ -88,7 +85,6 @@ func CreateAccountWebsocket() fiber.Handler {
 						"alert alert-warning",
 					})
 					c.WriteMessage(mt, res)
-					break
 				}
 				stmt, _ = conn.Prepare("INSERT INTO `kunden` (`ID`, `KundenID`, `Nachname`, `Vorname`, `Password`, `Token`, `AuftragsIDs`, `Telefonnummer`, `Email`, `Geburtsdatum`, `Geschlecht`, `Wohnort`, `Postleitzahl`, `Strasse`, `Hausnummer`, `Mailverified`, `2FA`) VALUES (NULL, ?, ?, ?, ?, 'null', '', ?, ?, ?, ?, ?, ?, ?, ?, 0, 1);")
 				stmt.Exec(kID, data.UserData.Nachname, data.UserData.Vorname, hash, data.UserData.Telefonnummer, data.UserData.Mail, data.UserData.Geburtsdatum, data.UserData.Geschlecht, data.UserData.Wohnort, data.UserData.Postleitzahl, data.UserData.Strasse, data.UserData.Hausnummer)
