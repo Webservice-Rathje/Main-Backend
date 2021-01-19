@@ -75,7 +75,6 @@ func CreateAccountWebsocket() fiber.Handler {
 				stmt.Close()
 				conn.Close()
 				c.WriteMessage(mt, resp)
-				break
 			} else {
 				conn := utils.GetConn()
 				stmt, _ := conn.Prepare("SELECT `KundenID` FROM `2FA-Codes` WHERE `Code`=?")
