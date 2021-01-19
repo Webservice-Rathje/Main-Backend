@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/sha512"
+	"database/sql"
 	"encoding/base64"
 	"math/rand"
 	"strings"
@@ -31,8 +32,22 @@ func HashPassword(password string, salt []byte) string {
 	return string(salt) + "$" + base64EncodedPasswordHash
 }
 
-func CheckPasswordsMatch(hashedPassword, currPassword string, salt []byte) bool {
-	var currPasswordHash = HashPassword(currPassword, salt)
-
-	return hashedPassword == currPasswordHash
+func CheckPasswordsMatch(currPassword string, conn *sql.DB, KundenID string) bool {
+	stmt, _ := conn.Prepare("SELECT `Password` FROM `kunden` WHERE `KundenID`=?")
+	type pwd_struct struct {
+		Password string `json:"Password"`
+	}
+	resp, _ := stmt.Query(KundenID)
+	var pwd pwd_struct
+	for resp.Next() {
+		err := resp.Scan(&pwd.Password)
+		if err != nil {
+			panic(err)
+		}
+	}
+	salt := strings.Split(pwd.Password, "$")[0]
+	currPasswordHash := HashPassword(currPassword, []byte(salt))
+	resp.Close()
+	stmt.Close()
+	return pwd.Password == currPasswordHash
 }

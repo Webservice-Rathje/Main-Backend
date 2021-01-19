@@ -34,7 +34,14 @@ func CreateAccountWebsocket() fiber.Handler {
 		)
 		for {
 			if mt, msg, err = c.ReadMessage(); err != nil {
-				// Handeling error
+				res, _ := json.Marshal(generalModels.ErrorResponseModel{
+					err.Error(),
+					"Server software",
+					"Contact the Webservice Rathje development team",
+					"alert alert-danger",
+				})
+				c.WriteMessage(mt, res)
+				break
 			}
 			var data CreateAccountRequestModel
 			err = json.Unmarshal(msg, &data)
@@ -90,8 +97,8 @@ func CreateAccountWebsocket() fiber.Handler {
 						break
 					}
 				}
-				stmt, _ = conn.Prepare("UPDATE `kunden` SET `Mailverified`=1 WHERE `KundenID`=?")
-				stmt.Exec(kid_struct.KundenID)
+				stmt, _ = conn.Prepare("UPDATE `kunden` SET `Mailverified`=1 WHERE `KundenID`=? AND `Password`=?")
+				stmt.Exec(kid_struct.KundenID, utils.CheckPasswordsMatch(data.UserData.Password, conn, kid_struct.KundenID))
 				stmt, _ = conn.Prepare("DELETE FROM `2FA-Codes` WHERE `Code`=?;")
 				stmt.Exec(data.TwoFA_Code)
 				res, _ := json.Marshal(response_struct{
