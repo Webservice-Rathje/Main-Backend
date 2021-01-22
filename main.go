@@ -25,6 +25,7 @@ func main() {
 	app.Use(logger.New())
 
 	app.Get("/", endpoints.DefaultEndpoint)
+	app.Post("/login", endpoints.LoginController)
 
 	// Kunden-Management
 	app.Get("/ws/kunden-management/createAccount", kundenmanagement.CreateAccountWebsocket())
