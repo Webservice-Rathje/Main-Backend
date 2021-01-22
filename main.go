@@ -26,6 +26,7 @@ func main() {
 
 	app.Get("/", endpoints.DefaultEndpoint)
 	app.Post("/login", endpoints.LoginController)
+	app.Post("/checkToken", endpoints.CheckTokenController)
 
 	// Kunden-Management
 	app.Get("/ws/kunden-management/createAccount", kundenmanagement.CreateAccountWebsocket())
